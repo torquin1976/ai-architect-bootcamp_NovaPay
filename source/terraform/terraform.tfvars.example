@@ -1,0 +1,22 @@
+# Example Terraform variables file
+# Copy this to terraform.tfvars and fill in your values
+
+aws_region        = "us-east-1"
+environment       = "poc"
+availability_zone = "us-east-1a"
+
+# VPC Configuration
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+private_subnet_cidr = "10.0.2.0/24"
+
+# Database Configuration
+db_username = "novapay_admin"
+db_password = "CHANGE_ME_STRONG_PASSWORD"  # Change this!
+db_name     = "novapay"
+
+# Container Images (update after building images)
+auth_service_image    = "novapay/auth-service:latest"
+charge_service_image  = "novapay/charge-service:latest"
+webhook_service_image = "novapay/webhook-service:latest"
+kyc_service_image     = "novapay/kyc-service:latest"

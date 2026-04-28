@@ -1,0 +1,32 @@
+Distributed Systems
+
+Stateless services & externalizing idempotency state
+At-least-once vs exactly-once delivery (webhooks)
+CAP trade-offs: why Multi-AZ RDS costs write latency
+Service boundaries: shared-nothing vs shared-database
+Circuit breakers, bulkheads, timeouts, retries with jitter
+
+
+Production Challenges
+
+Graceful shutdown + in-flight request draining
+Observability: logs vs metrics vs traces
+Cold start, warm pool, connection pool sizing
+Secrets management (not in env files)
+
+
+Monolith → Microservices
+
+Strangler-fig pattern — route by route
+Shared-DB anti-pattern & when it's actually fine
+Inter-service contracts (OpenAPI, gRPC, events)
+Distributed transactions & the Saga pattern
+
+
+Load Balancing, HA, RTO/RPO
+
+L4 vs L7 load balancing, sticky sessions, health checks
+Active-active vs active-passive across AZs / regions
+RTO vs RPO — definitions and how to measure them
+Backup strategies: snapshots, PITR, cross-region replicas
+Chaos engineering — break it on purpose, measure recovery

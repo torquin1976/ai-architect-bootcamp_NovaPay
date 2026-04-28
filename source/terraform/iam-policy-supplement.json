@@ -1,0 +1,88 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudWatchLogsTagging",
+      "Effect": "Allow",
+      "Action": [
+        "logs:ListTagsForResource",
+        "logs:ListTagsLogGroup"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SSMDescribeParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeParameters"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "VPCDescribeAttributes",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcAttribute",
+        "ec2:GetSecurityGroupsForVpc"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ServiceLinkedRoleCreation",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/aws-service-role/elasticache.amazonaws.com/AWSServiceRoleForElastiCache",
+        "arn:aws:iam::*:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing",
+        "arn:aws:iam::*:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "arn:aws:iam::*:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS"
+      ],
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": [
+            "elasticache.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
+            "ecs.amazonaws.com",
+            "rds.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ELBDescribeAttributes",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeListenerAttributes"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IAMRoleCleanup",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListInstanceProfilesForRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BackendCleanup",
+      "Effect": "Allow",
+      "Action": [
+        "s3:DeleteBucket",
+        "s3:ListBucketVersions",
+        "s3:DeleteObjectVersion",
+        "dynamodb:DeleteTable"
+      ],
+      "Resource": [
+        "arn:aws:s3:::novapay-terraform-state",
+        "arn:aws:s3:::novapay-terraform-state/*",
+        "arn:aws:dynamodb:us-east-1:637423409019:table/novapay-terraform-locks"
+      ]
+    }
+  ]
+}
+
