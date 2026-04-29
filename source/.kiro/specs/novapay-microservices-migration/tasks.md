@@ -209,6 +209,87 @@ The implementation focuses on teaching core microservices patterns (service deco
     - Copy source code and set entrypoint
     - _Requirements: 8.1_
 
+- [ ] 13.5. Implement ECR repositories for container images
+  - [ ] 13.5.1 Create Terraform module for ECR
+    - Create directory structure: `terraform/modules/ecr`
+    - Define ECR module with variables, main, and outputs files
+    - _Requirements: 8.2_
+  
+  - [ ] 13.5.2 Create ECR repositories for all services
+    - Create repository for Payment service (used by Auth and Charge services)
+    - Create repository for KYC service
+    - Create repository for WebHook service
+    - Enable image scanning on push for security
+    - Configure lifecycle policy to retain last 10 images
+    - _Requirements: 8.2_
+  
+  - [ ] 13.5.3 Integrate ECR module into main Terraform configuration
+    - Add ECR module to `terraform/main.tf`
+    - Output ECR repository URLs for use in CodeBuild
+    - _Requirements: 8.2_
+
+- [ ] 13.6. Implement CodeBuild projects for container image builds
+  - [ ] 13.6.1 Create Terraform module for CodeBuild
+    - Create directory structure: `terraform/modules/codebuild`
+    - Define CodeBuild module with variables, main, and outputs files
+    - _Requirements: 8.2_
+  
+  - [ ] 13.6.2 Create IAM roles and policies for CodeBuild
+    - Create IAM role for CodeBuild with trust policy
+    - Attach policies for ECR push permissions (ecr:GetAuthorizationToken, ecr:BatchCheckLayerAvailability, ecr:PutImage, ecr:InitiateLayerUpload, ecr:UploadLayerPart, ecr:CompleteLayerUpload)
+    - Attach policies for CloudWatch Logs (logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents)
+    - Attach policies for S3 access (for build artifacts if needed)
+    - _Requirements: 8.2_
+  
+  - [ ] 13.6.3 Create CodeBuild project for Payment service
+    - Define build project with GitHub source configuration
+    - Configure environment: Ubuntu standard image with Docker support
+    - Set environment variables: AWS_ACCOUNT_ID, AWS_DEFAULT_REGION, IMAGE_REPO_NAME, IMAGE_TAG
+    - Reference buildspec file: `DockerFiles/Payment/buildspec.yml`
+    - _Requirements: 8.2_
+  
+  - [ ] 13.6.4 Create CodeBuild project for KYC service
+    - Define build project with GitHub source configuration
+    - Configure environment: Ubuntu standard image with Docker support
+    - Set environment variables: AWS_ACCOUNT_ID, AWS_DEFAULT_REGION, IMAGE_REPO_NAME, IMAGE_TAG
+    - Reference buildspec file: `DockerFiles/KYC/buildspec.yml`
+    - _Requirements: 8.2_
+  
+  - [ ] 13.6.5 Create CodeBuild project for WebHook service
+    - Define build project with GitHub source configuration
+    - Configure environment: Ubuntu standard image with Docker support
+    - Set environment variables: AWS_ACCOUNT_ID, AWS_DEFAULT_REGION, IMAGE_REPO_NAME, IMAGE_TAG
+    - Reference buildspec file: `DockerFiles/WebHook/buildspec.yml`
+    - _Requirements: 8.2_
+  
+  - [ ] 13.6.6 Integrate CodeBuild module into main Terraform configuration
+    - Add CodeBuild module to `terraform/main.tf`
+    - Pass ECR repository URLs as inputs
+    - Output CodeBuild project names
+    - _Requirements: 8.2_
+
+- [ ] 13.7. Create buildspec files for Docker image builds
+  - [ ] 13.7.1 Create buildspec.yml for Payment service
+    - Define pre_build phase: Log in to ECR
+    - Define build phase: Build Docker image with dockerfile in `DockerFiles/Payment/dockerfile`
+    - Define post_build phase: Tag image and push to ECR
+    - Set working directory context to `DockerFiles/Payment`
+    - _Requirements: 8.2_
+  
+  - [ ] 13.7.2 Create buildspec.yml for KYC service
+    - Define pre_build phase: Log in to ECR
+    - Define build phase: Build Docker image with dockerfile in `DockerFiles/KYC/dockerfile`
+    - Define post_build phase: Tag image and push to ECR
+    - Set working directory context to `DockerFiles/KYC`
+    - _Requirements: 8.2_
+  
+  - [ ] 13.7.3 Create buildspec.yml for WebHook service
+    - Define pre_build phase: Log in to ECR
+    - Define build phase: Build Docker image with dockerfile in `DockerFiles/WebHook/dockerfile`
+    - Define post_build phase: Tag image and push to ECR
+    - Set working directory context to `DockerFiles/WebHook`
+    - _Requirements: 8.2_
+
 - [ ] 14. Implement ECS Fargate cluster and task definitions
   - [ ] 14.1 Create Terraform module for ECS cluster
     - Define ECS cluster with Fargate launch type

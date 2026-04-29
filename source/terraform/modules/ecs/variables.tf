@@ -62,3 +62,9 @@ variable "webhook_queue_url" {
   description = "SQS webhook queue URL"
   type        = string
 }
+
+variable "parameter_store_prefix" {
+  description = "Parameter Store prefix path (e.g., /novapay/poc)"
+  type        = string
+  default     = "/novapay/poc"
+}

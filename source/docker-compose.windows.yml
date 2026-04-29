@@ -1,0 +1,171 @@
+version: '3.8'
+
+# Windows-optimized Docker Compose configuration
+# Use this if you encounter issues with the default docker-compose.yml
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: novapay-postgres
+    environment:
+      POSTGRES_DB: novapay
+      POSTGRES_USER: np
+      POSTGRES_PASSWORD: np
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U np -d novapay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: novapay-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # LocalStack for SQS (AWS services emulation) - Community Edition (Free)
+  localstack:
+    image: localstack/localstack:3.5.0
+    container_name: novapay-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs
+      DEBUG: 0
+      AWS_DEFAULT_REGION: us-east-1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # LocalStack initializer (runs once to create SQS queue)
+  localstack-init:
+    image: amazon/aws-cli
+    container_name: novapay-localstack-init
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    depends_on:
+      localstack:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'Waiting for LocalStack to be ready...';
+      sleep 5;
+      echo 'Creating SQS queues...';
+      aws --endpoint-url=http://localstack:4566 sqs create-queue --queue-name novapay-webhook-queue --attributes VisibilityTimeout=30,MessageRetentionPeriod=1209600 || true;
+      aws --endpoint-url=http://localstack:4566 sqs create-queue --queue-name novapay-webhook-dlq --attributes MessageRetentionPeriod=1209600 || true;
+      echo 'SQS queues created successfully';
+      "
+
+  # Payment Service (handles /auth, /charge, /refund)
+  payment-service:
+    build:
+      context: ./DockerFiles/Payment
+      dockerfile: dockerfile
+    container_name: novapay-payment
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: payment-service
+      AWS_REGION: us-east-1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: novapay
+      DB_USERNAME: np
+      DB_PASSWORD: np
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/novapay-webhook-queue
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      localstack-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # KYC Service (handles /kyc)
+  kyc-service:
+    build:
+      context: ./DockerFiles/KYC
+      dockerfile: dockerfile
+    container_name: novapay-kyc
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: kyc-service
+      AWS_REGION: us-east-1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: novapay
+      DB_USERNAME: np
+      DB_PASSWORD: np
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Webhook Service (background worker)
+  webhook-service:
+    build:
+      context: ./DockerFiles/WebHook
+      dockerfile: dockerfile
+    container_name: novapay-webhook
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: webhook-service
+      AWS_REGION: us-east-1
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/novapay-webhook-queue
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+    depends_on:
+      localstack:
+        condition: service_healthy
+      localstack-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: novapay-network

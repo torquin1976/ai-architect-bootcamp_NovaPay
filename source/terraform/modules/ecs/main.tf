@@ -173,6 +173,41 @@ resource "aws_ecs_task_definition" "auth" {
         {
           name  = "SERVICE_NAME"
           value = "authorization-service"
+        },
+        {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        },
+        {
+          name  = "DB_PORT"
+          value = "5432"
+        },
+        {
+          name  = "REDIS_PORT"
+          value = "6379"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_HOST"
+          valueFrom = "${var.parameter_store_prefix}/rds/host"
+        },
+        {
+          name      = "DB_NAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/database"
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/username"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.parameter_store_prefix}/rds/password"
+        },
+        {
+          name      = "REDIS_HOST"
+          valueFrom = "${var.parameter_store_prefix}/redis/host"
         }
       ]
 
@@ -265,8 +300,43 @@ resource "aws_ecs_task_definition" "charge" {
           value = "charge-service"
         },
         {
-          name  = "WEBHOOK_QUEUE_URL"
+          name  = "SQS_QUEUE_URL"
           value = var.webhook_queue_url
+        },
+        {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        },
+        {
+          name  = "DB_PORT"
+          value = "5432"
+        },
+        {
+          name  = "REDIS_PORT"
+          value = "6379"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_HOST"
+          valueFrom = "${var.parameter_store_prefix}/rds/host"
+        },
+        {
+          name      = "DB_NAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/database"
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/username"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.parameter_store_prefix}/rds/password"
+        },
+        {
+          name      = "REDIS_HOST"
+          valueFrom = "${var.parameter_store_prefix}/redis/host"
         }
       ]
 
@@ -352,8 +422,12 @@ resource "aws_ecs_task_definition" "webhook" {
           value = "webhook-service"
         },
         {
-          name  = "WEBHOOK_QUEUE_URL"
+          name  = "SQS_QUEUE_URL"
           value = var.webhook_queue_url
+        },
+        {
+          name  = "AWS_REGION"
+          value = "us-east-1"
         }
       ]
 
@@ -428,6 +502,33 @@ resource "aws_ecs_task_definition" "kyc" {
         {
           name  = "SERVICE_NAME"
           value = "kyc-service"
+        },
+        {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        },
+        {
+          name  = "DB_PORT"
+          value = "5432"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_HOST"
+          valueFrom = "${var.parameter_store_prefix}/rds/host"
+        },
+        {
+          name      = "DB_NAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/database"
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${var.parameter_store_prefix}/rds/username"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.parameter_store_prefix}/rds/password"
         }
       ]
 

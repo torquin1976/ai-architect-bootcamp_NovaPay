@@ -91,6 +91,33 @@ module "sqs" {
   environment = var.environment
 }
 
+# ECR Module
+module "ecr" {
+  source = "./modules/ecr"
+
+  project_name            = "novapay"
+  environment             = var.environment
+  repositories            = ["payment", "kyc", "webhook"]
+  image_tag_mutability    = "MUTABLE"
+  scan_on_push            = true
+  lifecycle_policy_count  = 10
+}
+
+# CodeBuild Module
+module "codebuild" {
+  source = "./modules/codebuild"
+
+  project_name         = "novapay"
+  environment          = var.environment
+  github_repo_url      = var.github_repo_url
+  github_branch        = var.github_branch
+  ecr_repository_urls  = module.ecr.repository_urls
+  aws_region           = var.aws_region
+  services             = ["payment", "kyc", "webhook"]
+  build_compute_type   = "BUILD_GENERAL1_SMALL"
+  build_image          = "aws/codebuild/standard:7.0"
+}
+
 # ALB Module
 module "alb" {
   source = "./modules/alb"
@@ -130,4 +157,37 @@ module "cloudwatch" {
   source = "./modules/cloudwatch"
 
   environment = var.environment
+}
+
+# Outputs
+output "ecr_repository_urls" {
+  description = "ECR repository URLs for container images"
+  value       = module.ecr.repository_urls
+}
+
+output "codebuild_project_names" {
+  description = "CodeBuild project names for each service"
+  value       = module.codebuild.codebuild_project_names
+}
+
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = module.alb.alb_dns_name
+}
+
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = module.rds.db_endpoint
+  sensitive   = true
+}
+
+output "redis_endpoint" {
+  description = "Redis cache endpoint"
+  value       = module.redis.redis_endpoint
+  sensitive   = true
+}
+
+output "webhook_queue_url" {
+  description = "SQS webhook queue URL"
+  value       = module.sqs.webhook_queue_url
 }

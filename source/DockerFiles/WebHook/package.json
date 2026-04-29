@@ -1,0 +1,16 @@
+{
+  "name": "novapay-webhook-service",
+  "version": "1.0.0",
+  "description": "NovaPay Webhook Service",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.490.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -99,3 +99,16 @@ variable "kyc_service_image" {
   type        = string
   default     = "novapay/kyc-service:latest"
 }
+
+# GitHub Configuration
+variable "github_repo_url" {
+  description = "GitHub repository URL (HTTPS format)"
+  type        = string
+  default     = "https://github.com/your-org/novapay.git"
+}
+
+variable "github_branch" {
+  description = "GitHub branch to build from"
+  type        = string
+  default     = "main"
+}
