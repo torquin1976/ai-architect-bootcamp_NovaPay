@@ -11,6 +11,7 @@ terraform {
     }
   }
 
+  # S3 backend for state management
   backend "s3" {
     bucket         = "novapay-terraform-state"
     key            = "microservices/terraform.tfstate"
@@ -38,6 +39,7 @@ module "vpc" {
   source = "./modules/vpc"
 
   environment           = var.environment
+  project_name          = "NovaPay"
   vpc_cidr              = var.vpc_cidr
   availability_zone     = var.availability_zone
   availability_zone_2   = var.availability_zone_2
@@ -45,6 +47,20 @@ module "vpc" {
   public_subnet_2_cidr  = var.public_subnet_2_cidr
   private_subnet_cidr   = var.private_subnet_cidr
   private_subnet_2_cidr = var.private_subnet_2_cidr
+}
+
+# VPC Endpoints Module
+# Required for ECS Fargate tasks in private subnets to access AWS services
+module "vpc_endpoints" {
+  source = "./modules/vpc_endpoints"
+
+  vpc_id             = module.vpc.vpc_id
+  vpc_cidr           = var.vpc_cidr
+  private_subnet_ids = module.vpc.private_subnet_ids
+  route_table_ids    = [module.vpc.private_route_table_id]
+  region             = var.aws_region
+  project            = "NovaPay"
+  environment        = var.environment
 }
 
 # Parameter Store Module
@@ -133,17 +149,11 @@ module "ecs" {
 
   environment             = var.environment
   vpc_id                  = module.vpc.vpc_id
-  public_subnet_id        = module.vpc.public_subnet_id
+  private_subnet_id       = module.vpc.private_subnet_id
   alb_security_group_id   = module.alb.alb_security_group_id
   alb_target_group_auth   = module.alb.target_group_auth_arn
   alb_target_group_charge = module.alb.target_group_charge_arn
   alb_target_group_kyc    = module.alb.target_group_kyc_arn
-
-  # Service configuration
-  auth_image    = var.auth_service_image
-  charge_image  = var.charge_service_image
-  webhook_image = var.webhook_service_image
-  kyc_image     = var.kyc_service_image
 
   # Parameter Store ARNs
   parameter_store_arns = module.parameter_store.parameter_arns

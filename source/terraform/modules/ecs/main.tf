@@ -68,6 +68,34 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# IAM Policy for Parameter Store access (for task execution role)
+resource "aws_iam_role_policy" "parameter_store_execution_access" {
+  name = "parameter-store-execution-access"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = var.parameter_store_arns
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # IAM Role for ECS Tasks (application permissions)
 resource "aws_iam_role" "ecs_task" {
   name = "novapay-${var.environment}-ecs-task"
@@ -155,59 +183,13 @@ resource "aws_ecs_task_definition" "auth" {
   container_definitions = jsonencode([
     {
       name      = "auth-service"
-      image     = var.auth_image
+      image     = "public.ecr.aws/docker/library/nginx:alpine"
       essential = true
 
       portMappings = [
         {
           containerPort = 3000
           protocol      = "tcp"
-        }
-      ]
-
-      environment = [
-        {
-          name  = "NODE_ENV"
-          value = var.environment
-        },
-        {
-          name  = "SERVICE_NAME"
-          value = "authorization-service"
-        },
-        {
-          name  = "AWS_REGION"
-          value = "us-east-1"
-        },
-        {
-          name  = "DB_PORT"
-          value = "5432"
-        },
-        {
-          name  = "REDIS_PORT"
-          value = "6379"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "DB_HOST"
-          valueFrom = "${var.parameter_store_prefix}/rds/host"
-        },
-        {
-          name      = "DB_NAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/database"
-        },
-        {
-          name      = "DB_USERNAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/username"
-        },
-        {
-          name      = "DB_PASSWORD"
-          valueFrom = "${var.parameter_store_prefix}/rds/password"
-        },
-        {
-          name      = "REDIS_HOST"
-          valueFrom = "${var.parameter_store_prefix}/redis/host"
         }
       ]
 
@@ -218,14 +200,6 @@ resource "aws_ecs_task_definition" "auth" {
           "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
         }
-      }
-
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
       }
     }
   ])
@@ -244,9 +218,9 @@ resource "aws_ecs_service" "auth" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [var.public_subnet_id]
+    subnets          = [var.private_subnet_id]
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
@@ -280,63 +254,13 @@ resource "aws_ecs_task_definition" "charge" {
   container_definitions = jsonencode([
     {
       name      = "charge-service"
-      image     = var.charge_image
+      image     = "public.ecr.aws/docker/library/nginx:alpine"
       essential = true
 
       portMappings = [
         {
           containerPort = 3000
           protocol      = "tcp"
-        }
-      ]
-
-      environment = [
-        {
-          name  = "NODE_ENV"
-          value = var.environment
-        },
-        {
-          name  = "SERVICE_NAME"
-          value = "charge-service"
-        },
-        {
-          name  = "SQS_QUEUE_URL"
-          value = var.webhook_queue_url
-        },
-        {
-          name  = "AWS_REGION"
-          value = "us-east-1"
-        },
-        {
-          name  = "DB_PORT"
-          value = "5432"
-        },
-        {
-          name  = "REDIS_PORT"
-          value = "6379"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "DB_HOST"
-          valueFrom = "${var.parameter_store_prefix}/rds/host"
-        },
-        {
-          name      = "DB_NAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/database"
-        },
-        {
-          name      = "DB_USERNAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/username"
-        },
-        {
-          name      = "DB_PASSWORD"
-          valueFrom = "${var.parameter_store_prefix}/rds/password"
-        },
-        {
-          name      = "REDIS_HOST"
-          valueFrom = "${var.parameter_store_prefix}/redis/host"
         }
       ]
 
@@ -347,14 +271,6 @@ resource "aws_ecs_task_definition" "charge" {
           "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
         }
-      }
-
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
       }
     }
   ])
@@ -373,9 +289,9 @@ resource "aws_ecs_service" "charge" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [var.public_subnet_id]
+    subnets          = [var.private_subnet_id]
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
@@ -409,27 +325,8 @@ resource "aws_ecs_task_definition" "webhook" {
   container_definitions = jsonencode([
     {
       name      = "webhook-service"
-      image     = var.webhook_image
+      image     = "public.ecr.aws/docker/library/nginx:alpine"
       essential = true
-
-      environment = [
-        {
-          name  = "NODE_ENV"
-          value = var.environment
-        },
-        {
-          name  = "SERVICE_NAME"
-          value = "webhook-service"
-        },
-        {
-          name  = "SQS_QUEUE_URL"
-          value = var.webhook_queue_url
-        },
-        {
-          name  = "AWS_REGION"
-          value = "us-east-1"
-        }
-      ]
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -456,9 +353,9 @@ resource "aws_ecs_service" "webhook" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [var.public_subnet_id]
+    subnets          = [var.private_subnet_id]
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   deployment_minimum_healthy_percent = 0
@@ -484,51 +381,13 @@ resource "aws_ecs_task_definition" "kyc" {
   container_definitions = jsonencode([
     {
       name      = "kyc-service"
-      image     = var.kyc_image
+      image     = "public.ecr.aws/docker/library/nginx:alpine"
       essential = true
 
       portMappings = [
         {
           containerPort = 3000
           protocol      = "tcp"
-        }
-      ]
-
-      environment = [
-        {
-          name  = "NODE_ENV"
-          value = var.environment
-        },
-        {
-          name  = "SERVICE_NAME"
-          value = "kyc-service"
-        },
-        {
-          name  = "AWS_REGION"
-          value = "us-east-1"
-        },
-        {
-          name  = "DB_PORT"
-          value = "5432"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "DB_HOST"
-          valueFrom = "${var.parameter_store_prefix}/rds/host"
-        },
-        {
-          name      = "DB_NAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/database"
-        },
-        {
-          name      = "DB_USERNAME"
-          valueFrom = "${var.parameter_store_prefix}/rds/username"
-        },
-        {
-          name      = "DB_PASSWORD"
-          valueFrom = "${var.parameter_store_prefix}/rds/password"
         }
       ]
 
@@ -539,14 +398,6 @@ resource "aws_ecs_task_definition" "kyc" {
           "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
         }
-      }
-
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
       }
     }
   ])
@@ -565,9 +416,9 @@ resource "aws_ecs_service" "kyc" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [var.public_subnet_id]
+    subnets          = [var.private_subnet_id]
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
